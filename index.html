@@ -1,0 +1,396 @@
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vastgoed Portfolio Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .metric-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #3b82f6, #6366f1);
+        }
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #1e293b;
+            margin: 10px 0;
+        }
+        .metric-label {
+            color: #64748b;
+            font-size: 0.9em;
+        }
+        .metric-change {
+            font-size: 0.85em;
+            margin-top: 5px;
+        }
+        .positive { color: #10b981; }
+        .negative { color: #ef4444; }
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .chart-title {
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #1e293b;
+        }
+        .table-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        th {
+            background-color: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+        }
+        tr:hover {
+            background-color: #f9fafb;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+        .status-verhuurd { background: #d1fae5; color: #065f46; }
+        .status-beschikbaar { background: #fee2e2; color: #991b1b; }
+        .status-onderhandeling { background: #fef3c7; color: #92400e; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="header">
+            <h1>🏢 Vastgoed Portfolio Dashboard - Q1 2025</h1>
+            <p style="color: #64748b;">Real-time data via Yardi sync • Laatste update: <span id="lastUpdate"></span></p>
+        </div>
+
+        <!-- KPI Metrics -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">Totaal Portfolio</div>
+                <div class="metric-value">45,000 m²</div>
+                <div class="metric-change positive">↑ 2.3% YoY</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Bezettingsgraad</div>
+                <div class="metric-value">94.2%</div>
+                <div class="metric-change negative">↓ 0.8% vs vorige maand</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Maandelijkse Huur</div>
+                <div class="metric-value">€425,000</div>
+                <div class="metric-change positive">↑ 3.2% vs vorig jaar</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Collection Rate</div>
+                <div class="metric-value">98.2%</div>
+                <div class="metric-change positive">↑ 0.5% vs vorige maand</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">NOI YTD</div>
+                <div class="metric-value">€1.25M</div>
+                <div class="metric-change positive">↑ 4.1% vs budget</div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-grid">
+            <div class="chart-container">
+                <div class="chart-title">Bezettingsgraad per Gebouw</div>
+                <canvas id="occupancyChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title">Huurinkomsten Trend (12 maanden)</div>
+                <canvas id="revenueChart"></canvas>
+            </div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-container">
+                <div class="chart-title">Contractverloop Komende 6 Maanden</div>
+                <canvas id="expiryChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title">Leegstand per Type</div>
+                <canvas id="vacancyChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Leegstand Tabel -->
+        <div class="table-container">
+            <h3>Beschikbare Units - Actie Vereist</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Unit</th>
+                        <th>Gebouw</th>
+                        <th>m²</th>
+                        <th>Type</th>
+                        <th>Vraagprijs/m²</th>
+                        <th>Leeg sinds</th>
+                        <th>Status</th>
+                        <th>Actie</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>1.02</strong></td>
+                        <td>Stationsplein 45</td>
+                        <td>320</td>
+                        <td>Kantoor</td>
+                        <td>€24</td>
+                        <td>15 dagen</td>
+                        <td><span class="status-badge status-beschikbaar">Beschikbaar</span></td>
+                        <td>Marketing actief</td>
+                    </tr>
+                    <tr>
+                        <td><strong>4.15</strong></td>
+                        <td>Rembrandttoren</td>
+                        <td>180</td>
+                        <td>Kantoor</td>
+                        <td>€28</td>
+                        <td>3 dagen</td>
+                        <td><span class="status-badge status-onderhandeling">In onderhandeling</span></td>
+                        <td>2 bezichtigingen gepland</td>
+                    </tr>
+                    <tr>
+                        <td><strong>0.02</strong></td>
+                        <td>Stationsplein 45</td>
+                        <td>280</td>
+                        <td>Retail</td>
+                        <td>€40</td>
+                        <td>22 dagen</td>
+                        <td><span class="status-badge status-beschikbaar">Beschikbaar</span></td>
+                        <td>Prijs evaluatie nodig</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Contract Alerts -->
+        <div class="table-container" style="margin-top: 20px;">
+            <h3>⚠️ Contracten - Actie Vereist</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Huurder</th>
+                        <th>Unit(s)</th>
+                        <th>Einddatum</th>
+                        <th>Dagen tot einde</th>
+                        <th>Maandhuur</th>
+                        <th>Status</th>
+                        <th>Volgende Actie</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="background-color: #fef2f2;">
+                        <td><strong>Marketing Agency</strong></td>
+                        <td>3.01 (1,200m²)</td>
+                        <td>15-04-2025</td>
+                        <td>97</td>
+                        <td>€27,600</td>
+                        <td>Geen reactie</td>
+                        <td>Directie contact vereist</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Tech Solutions BV</strong></td>
+                        <td>1.01 (450m²)</td>
+                        <td>30-06-2025</td>
+                        <td>173</td>
+                        <td>€9,900</td>
+                        <td>Gesprek gepland</td>
+                        <td>Voorstel opstellen</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Update timestamp
+        document.getElementById('lastUpdate').textContent = new Date().toLocaleString('nl-NL');
+
+        // Bezettingsgraad per Gebouw
+        const occupancyCtx = document.getElementById('occupancyChart').getContext('2d');
+        new Chart(occupancyCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Stationsplein 45', 'Rembrandttoren', 'Zuidplein 100', 'Kraanspoor', 'Portfolio Gem.'],
+                datasets: [{
+                    label: 'Bezettingsgraad %',
+                    data: [93.3, 95.2, 92.8, 98.1, 94.2],
+                    backgroundColor: [
+                        'rgba(59, 130, 246, 0.8)',
+                        'rgba(59, 130, 246, 0.8)',
+                        'rgba(239, 68, 68, 0.8)',
+                        'rgba(16, 185, 129, 0.8)',
+                        'rgba(99, 102, 241, 0.8)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        min: 85,
+                        max: 100
+                    }
+                }
+            }
+        });
+
+        // Revenue Trend
+        const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+        new Chart(revenueCtx, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mrt', 'Apr', 'Mei', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'],
+                datasets: [{
+                    label: 'Huurinkomsten',
+                    data: [412000, 415000, 418000, 418000, 420000, 422000, 422000, 425000, 425000, 425000, 425000, 425000],
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.3
+                }, {
+                    label: 'Budget',
+                    data: [410000, 410000, 415000, 415000, 420000, 420000, 425000, 425000, 430000, 430000, 435000, 435000],
+                    borderColor: 'rgb(156, 163, 175)',
+                    borderDash: [5, 5]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom' }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        ticks: {
+                            callback: function(value) {
+                                return '€' + (value/1000) + 'k';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Contract Expiry
+        const expiryCtx = document.getElementById('expiryChart').getContext('2d');
+        new Chart(expiryCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['< 30 dagen', '30-90 dagen', '90-180 dagen', '> 180 dagen'],
+                datasets: [{
+                    data: [2, 5, 8, 27],
+                    backgroundColor: [
+                        'rgba(239, 68, 68, 0.8)',
+                        'rgba(251, 146, 60, 0.8)',
+                        'rgba(250, 204, 21, 0.8)',
+                        'rgba(16, 185, 129, 0.8)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'right' }
+                }
+            }
+        });
+
+        // Vacancy by Type
+        const vacancyCtx = document.getElementById('vacancyChart').getContext('2d');
+        new Chart(vacancyCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Kantoor', 'Retail', 'Opslag', 'Parkeren'],
+                datasets: [{
+                    data: [1420, 560, 180, 450],
+                    backgroundColor: [
+                        'rgba(59, 130, 246, 0.8)',
+                        'rgba(99, 102, 241, 0.8)',
+                        'rgba(139, 92, 246, 0.8)',
+                        'rgba(168, 85, 247, 0.8)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'right' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': ' + context.parsed + ' m²';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
